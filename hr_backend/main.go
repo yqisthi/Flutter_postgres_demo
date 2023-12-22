@@ -14,7 +14,7 @@ type Item struct {
 	Name  string `json:"name"`
 	Password string `json:"password"`
 	Role string `json:"role"`
-	// Add other fields as needed
+	Otp string `json:"otp"`
 }
 
 const (

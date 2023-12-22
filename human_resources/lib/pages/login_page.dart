@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:human_resources/components/otp_dialog.dart';
 import 'package:human_resources/pages/admin_page.dart';
 import 'package:human_resources/pages/home_page.dart';
 import 'package:http/http.dart' as http;
@@ -14,12 +15,24 @@ class _LoginPageState extends State<LoginPage> {
   final TextEditingController _passwordController = TextEditingController();
 
   void _login(BuildContext context) async {
+    final currentContext = context; // Store the context outside the async block
     String email = _emailController.text;
     String password = _passwordController.text;
 
     final String apiUrl = 'http://localhost:8080/getdata';
     String queryString = 'email=$email&password=$password';
     String urlWithParameters = '$apiUrl?$queryString';
+
+    Future<void> _showOtpDialog(Map<String, dynamic> data) async {
+      return showDialog(
+        context: currentContext, // Use the stored context
+        builder: (BuildContext context) {
+          return OtpDialog(
+            user: data,
+          );
+        },
+      );
+    }
 
     try {
       final response = await http.get(Uri.parse(urlWithParameters));
@@ -29,44 +42,15 @@ class _LoginPageState extends State<LoginPage> {
 
         if (data.isNotEmpty) {
           Map<String, dynamic> user = data[0];
-
-          // Access the user data
-          String userName = user['name'];
-          String userRole = user['role'];
-
-          // Navigate to HomePage on successful login
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AdminPage(name: userName, role: userRole),
-            ),
-          );
-          if (userRole == "admin") {
-          } else if (userRole != "admin") {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => HomePage(name: userName, role: userRole),
-              ),
-            );
-          }
+          _showOtpDialog(user);
         } else {
           // Handle case where no matching user is found
-          // setState(() {
-          //   result = 'No user found with the provided email and password.';
-          // });
         }
       } else {
         // Handle error cases
-        setState(() {
-          // result = 'Error: ${response.statusCode}\n${response.body}';
-        });
       }
     } catch (e) {
       // Handle network or other errors
-      setState(() {
-        // result = 'Error: $e';
-      });
     }
   }
 

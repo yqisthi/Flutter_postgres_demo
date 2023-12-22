@@ -2,51 +2,60 @@ package main
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
-
-	_ "github.com/lib/pq"
 )
 
+// getDataHandler handles HTTP requests to fetch user data
 func getDataHandler(w http.ResponseWriter, r *http.Request) {
+	// Open a database connection
 	db, err := getDB()
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 	defer db.Close()
 
-	// Get the email and name parameters from the query string
+	// Get the email and password parameters from the query string
 	emailParam := r.URL.Query().Get("email")
 	passParam := r.URL.Query().Get("password")
 
-	// Check if both email and name parameters are provided
+	// Check if both email and password parameters are provided
 	if emailParam == "" || passParam == "" {
 		http.Error(w, "Missing 'email' or 'password' parameter", http.StatusBadRequest)
 		return
 	}
 
 	// Use a prepared statement to prevent SQL injection
-	
 	rows, err := db.Query("SELECT email, name, password, role FROM \"user\" WHERE email = $1 AND password = $2", emailParam, passParam)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 	defer rows.Close()
 
 	var items []Item
 	for rows.Next() {
-		var item Item
-		err := rows.Scan(&item.Email, &item.Name, &item.Password, &item.Role)
+		var user Item
+		err := rows.Scan(&user.Email, &user.Name, &user.Password, &user.Role)
 		if err != nil {
-			log.Fatal(err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
 		}
-		items = append(items, item)
+
+		// Generate and set the OTP for the user
+		otp := randomOTP()
+		user.Otp = otp
+		Auth(user.Email, user.Otp)
+
+		// Append the user to the items slice
+		items = append(items, user)
 	}
 
 	// Convert the items to JSON
 	jsonData, err := json.Marshal(items)
 	if err != nil {
-		log.Fatal(err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
 	}
 
 	// Set the Content-Type header to application/json
